@@ -1,0 +1,121 @@
+---
+# このロールは、Zabbixをインストールし、初期設定までを行う。
+# 前提条件：MariaDBがインストール済みであること。
+
+# Zabbix LLCリポジトリ登録
+- name: Install Zabbix repository 
+  yum:
+    name: "{{ zabbix_repourl }}"
+    state: present
+
+# zabbix-frontendリポジトリを有効化
+- name: Enable zabbix-frontend repository
+  ini_file:
+    state: present
+    dest: /etc/yum.repos.d/zabbix.repo
+    section: zabbix-frontend
+    option: enabled
+    value: "1"
+
+# SCLリポジトリ登録
+- name: Install Software Collections repository
+  yum:
+    name: "{{ scl_repourl }}"
+    state: present
+
+# Zabbix関連パッケージをインストール
+- name: Install Zabbix Packages
+  yum:
+    name: "{{ zabbix_packages }}"
+    state: present
+
+# Zabbix用のデータベース作成
+- name: Create Database
+  mysql_db:
+    login_user: "root"
+    login_password: "{{ DB_root_Password }}"
+    name: "{{ DBName }}"
+    state: present
+    encoding: utf8
+    collation: utf8_bin
+
+# Zabbix用のDBユーザ作成
+- name: Create DB_User with GRANT Option
+  mysql_user:
+    login_user: "root"
+    login_password: "{{ DB_root_Password }}"
+    name: "{{ DBUser }}"
+    state: present
+    password: "{{ DBPassword }}"
+    priv: '{{ DBName }}.*:ALL,GRANT'
+
+# Zabbix用のDBスキーマファイルをインポート
+# 事前に当該DBにテーブルがすでに存在しているかシェルで確認し、
+# 存在していない場合にのみ実行する。
+- name: Check Table Count before Import Zabbix Schema File
+  shell:
+    mysql -u root -p{{ DB_root_Password }} {{ DBName }}
+    -ss -e "show tables;" | wc -l
+  register: result_tables
+- name: Configure Zabbix DB
+  shell:
+    zcat /usr/share/doc/zabbix-server-mysql*/create.sql.gz |
+    mysql -u root -p{{ DB_root_Password }} {{ DBName }}
+  when: result_tables.stdout == "0"
+
+# Zabbix設定ファイル編集
+- name: Configure zabbix_server.conf
+  template:
+    src: templates/zabbix_server.conf.j2
+    dest: /etc/zabbix/zabbix_server.conf
+    owner: root
+    group: zabbix
+
+# PHPのZabbix用設定ファイルのタイムゾーン変更
+- name: Configure PHP for Zabbix frontend
+  replace:
+    dest: /etc/opt/rh/rh-php72/php-fpm.d/zabbix.conf
+    regexp: '; php_value\[date\.timezone\] = Europe/Riga'
+    replace: 'php_value[date.timezone] = Asia/Tokyo'
+
+# Apache設定：デフォルトコンテンツの削除
+- name: Apache setup - delete welcome.conf
+  file:
+    path: /etc/httpd/conf.d/welcome.conf
+    state: absent
+
+# Apache設定：iconsフォルダを無効
+- name: Apache setup - delete autoindex.conf
+  file:
+    path: /etc/httpd/conf.d/autoindex.conf
+    state: absent
+
+# Apache設定：ディレクトリ内容一覧表示を無効
+- name: httpd.conf setup 1
+  replace:
+    dest: /etc/httpd/conf/httpd.conf
+    regexp: 'Options Indexes FollowSymLinks'
+    replace: 'Options FollowSymLinks'
+
+# Apache設定：セキュリティ設定
+#  - Cross Site Tracing(XST)対策
+#  - クリックジャッキング対策
+#  - ヘッダのApacheバージョン表示無効
+- name: httpd.conf setup 2
+  blockinfile:
+    dest: /etc/httpd/conf/httpd.conf
+    insertafter: EOF
+    marker: "# {mark} Ansible Security Setup Block ----"
+    content: |
+      TraceEnable off
+      Header append X-FRAME-OPTIONS "SAMEORIGIN"
+      ServerTokens ProductOnly
+      ServerSignature off
+
+# Zabbix関連サービス再起動＆自動起動有効化
+- name: Restart Zabbix Related Services
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+    enabled: yes
+  with_items: "{{ zabbix_services }}"

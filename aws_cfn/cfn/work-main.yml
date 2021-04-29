@@ -1,0 +1,225 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+# Project Name
+  PJName:
+    Description: Name of this project
+    Type: String
+    MinLength: 1
+    MaxLength: 255
+    AllowedPattern: ^[a-zA-Z][-a-zA-Z0-9]*$
+    Default: MyPJ
+
+# VPC
+  VpcCidrBlock:
+    Description: Input a VPC IPv4 CidrBlock. ex) 10.0.0.0/16
+    Type: String
+    Default: 10.0.0.0/16
+
+# Public Subnet1
+  AZ1:
+    Description: Select a AZ where Public Subnet will be created.
+    Type: AWS::EC2::AvailabilityZone::Name
+  PublicSubnetCidrBlock1:
+    Description: Input a Public Subnet IPv4 CidrBlock.  ex) 10.0.1.0/24
+    Type: String
+    Default: 10.0.0.0/24
+
+# Public Subnet2
+  AZ2:
+    Description: Select a AZ where Public Subnet will be created.
+    Type: AWS::EC2::AvailabilityZone::Name
+  PublicSubnetCidrBlock2:
+    Description: Input a Public Subnet IPv4 CidrBlock.  ex) 10.0.1.0/24
+    Type: String
+    Default: 10.0.2.0/24
+
+# EC2 instance Key pair
+  KeyName: 
+    Description: Select a key pair to be used for instances login.
+    Type: AWS::EC2::KeyPair::KeyName
+
+# Private Hosted Zone Name
+  HostedZoneName:
+    Description: FQDN of the private hosted zone
+    Type: String
+    Default: demo.local.
+
+# Workspace during CloudFormation construction
+  S3Name:
+    Description: >-
+      Name of the S3 bucket to use for workspace.
+      Required files must be stored.
+    Type: String
+    Default: cfn-workspace-2021****
+
+# Lambda Zip File Name
+  ZipFileName:
+    Description: Do not include file extensions.
+    Type: String
+    Default: edit_record
+
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Project Name
+        Parameters: 
+          - PJName
+      - Label:
+          default: VPC
+        Parameters: 
+          - VpcCidrBlock
+      - Label:
+          default: Public Subnet1
+        Parameters: 
+          - AZ1
+          - PublicSubnetCidrBlock1
+      - Label:
+          default: Public Subnet2
+        Parameters: 
+          - AZ2
+          - PublicSubnetCidrBlock2
+      - Label:
+          default: EC2 instance Key pair
+        Parameters: 
+          - KeyName
+      - Label:
+          default: Private Hosted Zone Name
+        Parameters: 
+          - HostedZoneName
+      - Label:
+          default: Lambda Zip File
+        Parameters: 
+          - S3Name
+          - ZipFileName
+
+
+Resources:
+# VPC
+  VPCStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./template/work-vpc.yml
+      Parameters:
+        PJName: !Ref PJName
+        VpcCidrBlock: !Ref VpcCidrBlock
+        AZ1: !Ref AZ1
+        PublicSubnetCidrBlock1: !Ref PublicSubnetCidrBlock1
+        AZ2: !Ref AZ2
+        PublicSubnetCidrBlock2: !Ref PublicSubnetCidrBlock2
+
+# Security Group
+  SecurityGroupStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./template/work-securitygroup.yml
+      Parameters:
+        PJName: !Ref PJName
+    DependsOn:
+      - VPCStack
+
+# IAM Role
+  IamRoleStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./template/work-iamrole.yml
+      Parameters:
+        PJName: !Ref PJName
+    DependsOn:
+      - VPCStack
+
+# Route53
+  Rote53Stack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./template/work-route53.yml
+      Parameters:
+        PJName: !Ref PJName
+        HostedZoneName: !Ref HostedZoneName
+    DependsOn:
+      - VPCStack
+
+# Zabbix Server
+  ZabbixServerStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./template/work-zabbix-server.yml
+      Parameters:
+        PJName: !Ref PJName
+        KeyName: !Ref KeyName
+        S3Name: !Ref S3Name
+    DependsOn:
+      - VPCStack
+      - SecurityGroupStack
+      - IamRoleStack
+      - Rote53Stack
+
+# Fluentd Server
+  FluentdServerStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./template/work-fluentd-server.yml
+      Parameters:
+        PJName: !Ref PJName
+        KeyName: !Ref KeyName
+        S3Name: !Ref S3Name
+    DependsOn:
+      - VPCStack
+      - SecurityGroupStack
+      - IamRoleStack
+      - ZabbixServerStack
+      - Rote53Stack
+
+# Lambda
+  LambdaStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./template/work-lambda.yml
+      Parameters:
+        PJName: !Ref PJName
+        S3Name: !Ref S3Name
+        ZipFileName: !Ref ZipFileName
+    DependsOn:
+      - VPCStack
+
+# Load balancer to containers on ECS
+  LoadBalancerStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./template/work-lb.yml
+      Parameters:
+        PJName: !Ref PJName
+    DependsOn:
+      - VPCStack
+      - SecurityGroupStack
+
+# ECS Cluster
+  ECSClusterStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./template/work-ecs-cluster.yml
+      Parameters:
+        PJName: !Ref PJName
+        KeyName: !Ref KeyName
+    DependsOn:
+      - VPCStack
+      - SecurityGroupStack
+      - ZabbixServerStack
+      - Rote53Stack
+      - LambdaStack
+
+# ECS Service
+  ECSServiceStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./template/work-ecs-service.yml
+      Parameters:
+        PJName: !Ref PJName
+    DependsOn:
+      - VPCStack
+      - ECSClusterStack
+      - LoadBalancerStack
+      - FluentdServerStack

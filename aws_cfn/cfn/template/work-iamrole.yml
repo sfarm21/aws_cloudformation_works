@@ -1,0 +1,63 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >-
+  Depends on
+  work-vpc.yml
+
+Parameters:
+  PJName:
+    Description: Name of this project
+    Type: String
+    MinLength: 1
+    MaxLength: 255
+    AllowedPattern: ^[a-zA-Z][-a-zA-Z0-9]*$
+    Default: MyPJ
+
+
+Resources:
+  S3AccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement: 
+          - Effect: Allow
+            Principal: 
+              Service: 
+                - ec2.amazonaws.com
+            Action: 
+              - sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - !Ref S3AccessPolicy
+
+  S3AccessPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: s3-minimum-access
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: Allow
+          Action:
+            - s3:ListBucket
+          Resource: arn:aws:s3:::*
+        - Effect: Allow
+          Action:
+            - s3:GetObject
+            - s3:PutObject
+          Resource: arn:aws:s3:::*/*
+
+Outputs:
+  S3AccessRole:
+    Description: S3 Access IAM Role
+    Value: !Ref S3AccessRole
+    Export:
+      Name: !Sub ${PJName}-S3AccessRole
+
+  S3AccessPolicy:
+    Description: S3 Access IAM Policy
+    Value: !Ref S3AccessPolicy
+    Export:
+      Name: !Sub ${PJName}-S3AccessPolicy

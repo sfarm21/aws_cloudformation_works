@@ -1,0 +1,6 @@
+---
+# Zabbix 5.0を対象サーバにインストールする。
+
+- import_playbook: zabbixserver_disable_selinux.yml
+- import_playbook: zabbixserver_install_mariadb.yml
+- import_playbook: zabbixserver_install_zabbix.yml

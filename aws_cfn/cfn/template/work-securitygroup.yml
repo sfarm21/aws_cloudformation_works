@@ -1,0 +1,190 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >-
+  Depends on
+  work-vpc.yml
+
+Parameters:
+  PJName:
+    Description: Name of this project
+    Type: String
+    MinLength: 1
+    MaxLength: 255
+    AllowedPattern: ^[a-zA-Z][-a-zA-Z0-9]*$
+    Default: MyPJ
+
+
+Resources:
+# Application Load Balancer Security Group
+  SgALB:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: SgALB
+      GroupDescription: http access allow
+      VpcId:
+        Fn::ImportValue: !Sub ${PJName}-Vpc
+      Tags:
+        - Key : Name
+          Value: !Sub ${PJName}-SgALB
+
+  SgInggressALBForHttp:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SgALB
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      CidrIp: 0.0.0.0/0
+
+# ECS Cluster Security Group
+  SgEcsCluster:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: SgEcsCluster
+      GroupDescription: http,ssh access allow
+      VpcId:
+        Fn::ImportValue: !Sub ${PJName}-Vpc
+      Tags:
+        - Key : Name
+          Value: !Sub ${PJName}-SgEcsCluster
+
+  SgInggressEcsClusterForHttp:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SgEcsCluster
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      SourceSecurityGroupId: !Ref SgALB
+
+  SgInggressEcsClusterForSsh:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SgEcsCluster
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      CidrIp: 0.0.0.0/0
+
+# Zabbix Agent Security Group
+  SgZabbixAgent:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: SgZabbixAgent
+      GroupDescription: from zabbix-server access allow
+      VpcId:
+        Fn::ImportValue: !Sub ${PJName}-Vpc
+      Tags:
+        - Key : Name
+          Value: !Sub ${PJName}-SgZabbixAgent
+
+  SgInggressZabbixAgent:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SgZabbixAgent
+      IpProtocol: tcp
+      FromPort: 10050
+      ToPort: 10050
+      SourceSecurityGroupId: !Ref SgZabbixServer
+
+# Zabbix Server Security Group
+  SgZabbixServer:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: SgZabbixServer
+      GroupDescription: http,ssh access allow
+      VpcId:
+        Fn::ImportValue: !Sub ${PJName}-Vpc
+      Tags:
+        - Key : Name
+          Value: !Sub ${PJName}-SgZabbixServer
+
+  SgInggressZabbixServerForHttp:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SgZabbixServer
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      CidrIp: 0.0.0.0/0
+
+  SgInggressZabbixServerForSsh:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SgZabbixServer
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      CidrIp: 0.0.0.0/0
+
+  SgInggressZabbixServerForZabbixAgent:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SgZabbixServer
+      IpProtocol: tcp
+      FromPort: 10051
+      ToPort: 10051
+      SourceSecurityGroupId: !Ref SgZabbixAgent
+
+# Fluentd Server Security Group
+  SgFluentdServer:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: SgFluentdServer
+      GroupDescription: ssh access, fluentd data reception allow
+      VpcId:
+        Fn::ImportValue: !Sub ${PJName}-Vpc
+      Tags:
+        - Key : Name
+          Value: !Sub ${PJName}-SgFluentdServer
+
+  SgInggressFluentdServerForSsh:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SgFluentdServer
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      CidrIp: 0.0.0.0/0
+
+  SgInggressFluentdServerForDataReception:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SgFluentdServer
+      IpProtocol: tcp
+      FromPort: 24224
+      ToPort: 24224
+      SourceSecurityGroupId: !Ref SgEcsCluster
+
+
+Outputs:
+  SgALB:
+    Description: Security Group for ALB
+    Value: !Ref SgALB
+    Export:
+      Name: !Sub ${PJName}-SgALB
+
+  SgEcsCluster:
+    Description: Security Group for ECS Cluster
+    Value: !Ref SgEcsCluster
+    Export:
+      Name: !Sub ${PJName}-SgEcsCluster
+
+  SgZabbixAgent:
+    Description: Security Group for Zabbix Agent
+    Value: !Ref SgZabbixAgent
+    Export:
+      Name: !Sub ${PJName}-SgZabbixAgent
+
+  SgZabbixServer:
+    Description: Security Group for Zabbix Server
+    Value: !Ref SgZabbixServer
+    Export:
+      Name: !Sub ${PJName}-SgZabbixServer
+
+  SgFluentdServer:
+    Description: Security Group for Fluentd Server
+    Value: !Ref SgFluentdServer
+    Export:
+      Name: !Sub ${PJName}-SgFluentdServer

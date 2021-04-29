@@ -1,0 +1,16 @@
+---
+# このロールはSELinuxの無効化を行う。
+# 有効化であった場合は、無効化に変更後、OS再起動をする。
+
+# ansibleでselinuxモジュールを使用するために
+# libselinux-pythonがインストールされていなかったら、
+# インストールする。
+- name: Install Required Package
+  yum:
+    name: libselinux-python
+    state: present
+
+- name: Disable SELinux
+  selinux:
+    state: disabled
+  notify: Reboot_OS

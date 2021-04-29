@@ -1,0 +1,87 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >-
+  Depends on
+  work-vpc.yml,
+  work-ecs-cluster.yml,
+  work-lb.yml,
+  work-fluentd-server.yml
+
+Parameters:
+  PJName:
+    Description: Name of this project
+    Type: String
+    MinLength: 1
+    MaxLength: 255
+    AllowedPattern: ^[a-zA-Z][-a-zA-Z0-9]*$
+    Default: MyPJ
+
+
+Resources:
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: DemoApp
+      RequiresCompatibilities:
+        - EC2
+      NetworkMode: bridge
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: log_router
+          Image: 906394416424.dkr.ecr.us-west-2.amazonaws.com/aws-for-fluent-bit:latest
+          Essential: true
+          MemoryReservation: 50
+          FirelensConfiguration:
+            Type: fluentbit
+        - Name: nginx
+          Image: nginx
+          Essential: true
+          MemoryReservation: 300
+          Environment:
+            - Name: TZ
+              Value: Asia/Tokyo
+          PortMappings:
+            - ContainerPort: 80
+              HostPort: 80
+          LogConfiguration:
+            LogDriver: awsfirelens
+            Options:
+              Name: forward
+              Host: !ImportValue FluentdServerDNSName
+              Port: "24224"
+
+  ECSService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster:
+        Fn::ImportValue: !Sub ${PJName}-EcsCluster
+      DesiredCount: 2
+      TaskDefinition: !Ref TaskDefinition
+      LaunchType: EC2
+      LoadBalancers:
+        - ContainerName: nginx
+          ContainerPort: 80
+          TargetGroupArn:
+            Fn::ImportValue: !Sub ${PJName}-TargetGroup
+
+
+Outputs:
+  ECSService:
+    Value: !Ref ECSService

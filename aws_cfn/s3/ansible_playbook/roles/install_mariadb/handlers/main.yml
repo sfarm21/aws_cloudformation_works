@@ -1,0 +1,6 @@
+---
+# MariaDBサービス再起動
+- name: Restart_MariaDB
+  systemd:
+    name: mariadb
+    state: restarted

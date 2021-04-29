@@ -1,0 +1,37 @@
+---
+# zabbixグループ変数
+# インストールパッケージ、パスワード情報などを管理
+
+# ZabbixリポジトリURL
+zabbix_repourl: "https://repo.zabbix.com/zabbix/5.0/rhel/7/x86_64/zabbix-release-5.0-1.el7.noarch.rpm"
+
+# SCLリポジトリURL
+scl_repourl:
+  - http://mirror.centos.org/centos/7/extras/x86_64/Packages/centos-release-scl-rh-2-3.el7.centos.noarch.rpm
+  - http://mirror.centos.org/centos/7/extras/x86_64/Packages/centos-release-scl-2-3.el7.centos.noarch.rpm
+
+# インストールするZabbix関連パッケージ
+zabbix_packages:
+  - zabbix-server-mysql
+  - zabbix-agent2
+  - zabbix-web-mysql-scl
+  - zabbix-apache-conf-scl
+  - zabbix-web-japanese
+
+# Zabbix関連サービス
+zabbix_services:
+  - zabbix-server
+  - zabbix-agent2
+  - httpd
+  - rh-php72-php-fpm
+
+# MariaDBアカウント情報
+DB_root_Password: "yourrootpassword"
+DBName: "zabbix"
+DBUser: "zabbix"
+DBPassword: "yourzabbixpassword"
+
+# Zabbix Webポータル ログイン情報
+zabbix_login_user: "Admin"
+zabbix_login_password: "zabbix"
+zabbix_server_url: "http://localhost/zabbix/"

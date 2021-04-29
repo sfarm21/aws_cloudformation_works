@@ -1,0 +1,46 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >-
+  Depends on
+  work-vpc.yml
+
+Parameters:
+  PJName:
+    Description: Name of this project
+    Type: String
+    MinLength: 1
+    MaxLength: 255
+    AllowedPattern: ^[a-zA-Z][-a-zA-Z0-9]*$
+    Default: MyPJ
+
+  HostedZoneName:
+    Description: FQDN of the private hosted zone
+    Type: String
+    Default: demo.local.
+
+
+Resources:
+  PrivateHostedZone:
+    Type: AWS::Route53::HostedZone
+    Properties: 
+      Name: !Ref HostedZoneName
+      VPCs: 
+        - VPCId:
+            Fn::ImportValue: !Sub ${PJName}-Vpc
+          VPCRegion:
+            !Ref AWS::Region
+
+
+Outputs:
+  PrivateHostedZoneID:
+    Description: Private Hosted Zone ID
+    Value: !GetAtt PrivateHostedZone.Id
+    Export:
+      Name: !Sub ${PJName}-PrivateHostedZoneID
+
+  HostedZoneName:
+    Description: FQDN of the private hosted zone
+    Value: !Ref HostedZoneName
+    Export:
+      Name: HostedZoneName

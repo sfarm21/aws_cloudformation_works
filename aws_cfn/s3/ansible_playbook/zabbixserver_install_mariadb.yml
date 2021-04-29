@@ -1,0 +1,11 @@
+---
+# このプレイブックは、MariaDBをインストールし、
+# セキュリティの初期設定(mysql_secure_installationで行う処理)
+# までを実施する。
+# 実際の処理は下記ロールを参照。
+# roles/install_mariadb/tasks/main.yml
+
+- name: Install MariaDB
+  hosts: zabbix
+  roles:
+    - install_mariadb

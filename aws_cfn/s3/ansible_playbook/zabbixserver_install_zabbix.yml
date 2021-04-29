@@ -1,0 +1,10 @@
+---
+# このプレイブックは、Zabbixをインストールし、初期設定までを行う。
+# 前提条件：MariaDBがインストール済みであること。
+# 実際の処理は下記ロールを参照。
+# roles/install_zabbix/tasks/main.yml
+
+- name: Install Zabbix
+  hosts: zabbix
+  roles:
+    - install_zabbix

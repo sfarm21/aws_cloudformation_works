@@ -1,0 +1,89 @@
+---
+# Zabbixサーバに監視対象ホストの設定を追加する。
+# 前提条件：Zabbixインストールが完了しており、ポータル画面よりログイン可能状態であること。
+
+- name: Add Zabbix Host
+  hosts: localhost
+  connection: local
+  vars:
+    ansible_become: yes
+    ansible_become_method: sudo
+  tasks:
+    # zabbixグループの変数を読み込む。
+    - name: Include Zabbix Vars File
+      include_vars: "./group_vars/zabbix.yml"
+
+    - name: Install Required Package
+      yum:
+        name: python-pip
+        state: present
+
+    - name: Install zabbix-api
+      pip:
+        name: zabbix-api
+        state: present
+
+    # 監視設定のZabbixテンプレートファイルをインポートする。
+    - name: Import Zabbix templates from XML
+      local_action:
+        module: zabbix_template
+        server_url: "{{ zabbix_server_url }}"
+        login_user: "{{ zabbix_login_user }}"
+        login_password: "{{ zabbix_login_password }}"
+        template_xml: "{{ lookup('file', './templates/zbx_template_fluentd_server.xml') }}"
+        state: present
+
+    # 以下、ホスト登録処理
+    - name: Add Zabbix Host Entry - Fluentd server
+      zabbix_host:
+        server_url: "{{ zabbix_server_url }}"
+        login_user: "{{ zabbix_login_user }}"
+        login_password: "{{ zabbix_login_password }}"
+        host_name: Fluentd server
+        description: Added from Ansible
+        host_groups:
+          - Linux servers
+        link_templates: 
+          - Template Fluentd server
+        interfaces:
+          - type: 1
+            main: 1
+            dns: fluentd.demo.local
+            port: 10050
+        state: present
+
+    - name: Add Zabbix Host Entry - ECS Cluster node 1
+      zabbix_host:
+        server_url: "{{ zabbix_server_url }}"
+        login_user: "{{ zabbix_login_user }}"
+        login_password: "{{ zabbix_login_password }}"
+        host_name: ECS Cluster node 1
+        description: Added from Ansible
+        host_groups:
+          - Linux servers
+        link_templates: 
+          - Template App Docker
+        interfaces:
+          - type: 1
+            main: 1
+            dns: ecs-cluster1.demo.local
+            port: 10050
+        state: present
+
+    - name: Add Zabbix Host Entry - ECS Cluster node 2
+      zabbix_host:
+        server_url: "{{ zabbix_server_url }}"
+        login_user: "{{ zabbix_login_user }}"
+        login_password: "{{ zabbix_login_password }}"
+        host_name: ECS Cluster node 2
+        description: Added from Ansible
+        host_groups:
+          - Linux servers
+        link_templates: 
+          - Template App Docker
+        interfaces:
+          - type: 1
+            main: 1
+            dns: ecs-cluster2.demo.local
+            port: 10050
+        state: present

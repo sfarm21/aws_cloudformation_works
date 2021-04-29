@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zabbix_export>
+    <version>5.0</version>
+    <date>2021-04-01T06:51:15Z</date>
+    <groups>
+        <group>
+            <name>Templates</name>
+        </group>
+    </groups>
+    <templates>
+        <template>
+            <template>Template Fluentd server</template>
+            <name>Template Fluentd server</name>
+            <groups>
+                <group>
+                    <name>Templates</name>
+                </group>
+            </groups>
+            <items>
+                <item>
+                    <name>Fluentd収集ログ</name>
+                    <type>ZABBIX_ACTIVE</type>
+                    <key>logrt[&quot;/var/log/firelens/nginx/file.*$&quot;]</key>
+                    <trends>0</trends>
+                    <value_type>LOG</value_type>
+                </item>
+            </items>
+        </template>
+    </templates>
+</zabbix_export>

@@ -1,0 +1,74 @@
+---
+# このロールは、MariaDBをインストールし、
+# セキュリティの初期設定(mysql_secure_installationで行う処理)
+# までを実施する。
+
+# ansibleで mysql_user モジュールを使用するために
+# MySQL-python も併せてインストールする。
+- name: Install MariaDB
+  yum:
+    name:
+      - mariadb-server
+      - MySQL-python
+    state: present
+
+# MariaDBサービス起動＆自動起動有効化
+- name: Start and Enable MariaDB Service
+  systemd:
+    name: mariadb
+    state: started
+    enabled: yes
+
+# rootユーザのパスワード設定
+- name: Set root user password
+  mysql_user:
+    login_user: "root"
+    login_password: "{{ DB_root_Password }}"
+    name: "root"
+    host_all: yes
+    password: "{{ DB_root_Password }}"
+    check_implicit_admin: yes
+    state: present
+  notify: Restart_MariaDB
+
+# 匿名ユーザ削除
+- name: Remove anonymous users
+  mysql_user:
+    login_user: "root"
+    login_password: "{{ DB_root_Password }}"
+    name: ''
+    host_all: yes
+    state: absent
+  notify: Restart_MariaDB
+
+# リモートからの root ログインを禁止
+# まず、hostnameコマンドで自身のホスト名を調べ、
+# そのホスト名によるrootアクセスをmysql_userで削除する。
+# これにより、localhost以外からのrootアクセスを拒否する。
+- name: Get hostname
+  shell: hostname
+  register: result_hostname
+  changed_when: false
+  failed_when: false
+
+- name: Disallow root login remotely
+  mysql_user:
+    login_user: "root"
+    login_password: "{{ DB_root_Password }}"
+    name: root
+    host: "{{ result_hostname.stdout }}"
+    state: absent
+  when: result_hostname.stdout != "localhost"
+  notify: Restart_MariaDB
+
+# testデータベース削除
+- name: Remove test database and access to it
+  mysql_db:
+    login_user: "root"
+    login_password: "{{ DB_root_Password }}"
+    name: "test"
+    state: absent
+  notify: Restart_MariaDB
+
+
+

@@ -1,0 +1,106 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >-
+  Depends on
+  work-vpc.yml,
+  work-securitygroup.yml,
+  work-iamrole.yml,
+  work-route53.yml
+
+Parameters:
+  PJName:
+    Description: Name of this project
+    Type: String
+    MinLength: 1
+    MaxLength: 255
+    AllowedPattern: ^[a-zA-Z][-a-zA-Z0-9]*$
+    Default: MyPJ
+
+  EC2AMI:
+    Description: Amazon Linux 2 Latest AMI ID
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+
+  KeyName: 
+    Description: Select your key pair.
+    Type: AWS::EC2::KeyPair::KeyName
+
+  # Used to store Ansible playbook files
+  S3Name:
+    Description: >-
+      Name of the S3 bucket to use for workspace.
+      Required files must be stored.
+    Type: String
+    Default: cfn-workspace-2021****
+
+
+Resources:
+  ZabbixServer:
+    Type: AWS::EC2::Instance
+    Properties: 
+      BlockDeviceMappings: 
+        - DeviceName: /dev/xvda
+          Ebs: 
+            VolumeSize: 8
+            VolumeType: gp2
+            DeleteOnTermination: true
+      ImageId: !Ref EC2AMI
+      InstanceType: t2.micro
+      KeyName: !Ref KeyName
+      IamInstanceProfile: !Ref ZabbixServerInstanceProfile
+      NetworkInterfaces: 
+        - AssociatePublicIpAddress: true
+          DeleteOnTermination: true
+          GroupSet: 
+            - Fn::ImportValue: !Sub ${PJName}-SgZabbixServer
+          DeviceIndex: "0"
+          SubnetId:
+            Fn::ImportValue: !Sub ${PJName}-PublicSubnet1
+      Tags: 
+        - Key: Name
+          Value: !Sub ${PJName}-ZabbixServer
+      UserData: 
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum -y update
+          amazon-linux-extras install -y epel
+          yum install -y ansible
+          ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa
+          cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+          aws s3 cp s3://${S3Name}/ansible_playbook ~ec2-user/ansible_playbook --recursive
+          export ANSIBLE_HOST_KEY_CHECKING=False
+          ansible-playbook -i ~ec2-user/ansible_playbook/hosts ~ec2-user/ansible_playbook/site.yml
+          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource ZabbixServer --region ${AWS::Region}
+    CreationPolicy:
+      ResourceSignal:
+        Count: 1
+        Timeout: PT10M
+
+  ZabbixServerInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - Fn::ImportValue: !Sub ${PJName}-S3AccessRole
+
+  DNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId:
+        Fn::ImportValue: !Sub ${PJName}-PrivateHostedZoneID
+      Name: !Sub
+        - zabbix.${Domain}
+        - { Domain: !ImportValue HostedZoneName }
+      Type: A
+      TTL: 300
+      ResourceRecords:
+        - !GetAtt ZabbixServer.PrivateIp
+
+
+Outputs:
+  ZabbixServerDNSName:
+    Description: Zabbix Server Private DNS Name
+    Value: !Ref DNSRecord
+    Export:
+      Name: ZabbixServerDNSName
