@@ -5,7 +5,7 @@ AWS CloudFormationを使用して、AWS上に環境構築するCloudFormationテ
 - Amazon ECS上のNginxコンテナをZabbixを用いて監視
 - 各Nginxコンテナのログは、サイドカーコンテナのFireLensを経由しFluentdサーバへ集約
 - サーバ間の内部アクセス時の名前解決は、Amazon Route53のプライベートホストゾーンを利用
-- ECSクラスタを構成するEC2インスタンスのプライベートホストゾーンへのDNSレコード登録は、Amazon Lambdaを使用してインスタンス起動/終了時に自動登録/削除
+- ECSクラスタを構成するEC2インスタンスについて、プライベートホストゾーンへのDNSレコード登録は、Amazon Lambdaによりインスタンス起動/終了時に自動登録/削除
 - CloudFormationでの環境構築時の作業領域としてAmazon S3を利用
 ### AWS構成図
 ![画面1](./img/AWS構成図.jpg)
@@ -94,8 +94,8 @@ d-----    2021/04/25(日)     20:54                template
 ![画面2](./img/パラメータ画面.jpg)
 <br>
 ３．スタック作成が正常に完了すると、「`http://ZabbixサーバのパブリックIP/zabbix`」よりZabbix Webポータルの初回設定画面にアクセスできるようになります。
-初回設定画面を進め、ログイン画面が表示されるまで進めます。<br>
-４．ログイン画面まで進んだら、Zabbixサーバにターミナルからec2-userでSSH接続し、「~/ansible_playbook」ディレクトリ内に存在する「Zabbixホスト登録、テンプレートインポート用Playbook」を実行します。
+初回設定を進めていき、ログイン画面が表示されるまで進めます。<br>
+４．Zabbixサーバにターミナルからec2-userでSSH接続し、「~/ansible_playbook」ディレクトリ内に存在する「Zabbixホスト登録、テンプレートインポート用Playbook」を実行します。
 ```
 # Zabbixホスト登録、テンプレートインポート用Playbookを実行
 ansible-playbook -i hosts add_zabbix_host.yml
