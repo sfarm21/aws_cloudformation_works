@@ -15,7 +15,7 @@ AWS CloudFormationを使用して、AWS上に環境構築するCloudFormationテ
 
 | 監視項目 | 監視対象 |
 |--|--|
-| メトリクス監視 | ECS上の各コンテナ、ECSクラスタを構成する各EC2 |
+| リソース監視 | ECS上の各コンテナ、ECSクラスタを構成する各EC2 |
 | ログ監視  | Nginxコンテナのアクセスログ、エラーログ |
 
 <br>
@@ -64,7 +64,7 @@ Lambda Zipファイルです。edit_record.pyを圧縮した物です。ECSク�
 Fluentdサーバのfluentdデーモンの設定ファイルです。
 - ansible_playbook<br>
 Zabbixサーバを構築するAnsibleのPlaybookです。
-内容は[ansible_zabbix_setupリポジトリ](https://github.com/sfarm21/ansible_zabbix_setup.git)と一緒です。hostsとグループ変数のファイルはAWS用に編集しています。
+内容は[ansible_zabbix_setupリポジトリ](https://github.com/sfarm21/ansible_zabbix_setup.git)と同一です。hostsとグループ変数のファイルはAWS用に編集しています。
 
 <br>
 
@@ -72,7 +72,7 @@ Zabbixサーバを構築するAnsibleのPlaybookです。
 
 ### 準備
 １．初めに作業領域用のS3バケット作成します。そして、そのS3バケットに本リポジトリのs3フォルダに格納されているファイル群をアップロードします。<br>
-２．次に、CloudFormationでデプロイ用のCFnテンプレート・ファイルを作成します。まず、「make_upload_cfn_template_file.ps1」ファイルをエディタで開き、「$s3_bucket=」以降に記載されている作業領域用のS3バケット名を自身のバケット名に編集します。<br>
+２．次に、CloudFormationでデプロイ用のCFnテンプレート・ファイルを作成します。まず、「make_upload_cfn_template_file.ps1」ファイルをエディタで開き、「$s3_bucket=」以降に記載されている作業領域用のS3バケット名を自身のバケット名に修正します。<br>
 この状態でPowerShellコンソール上で本スクリプトを実行すると、同フォルダに「work-main-template.yml」としてデプロイ用のCFnテンプレート・ファイルが作成されます。
 
 ```
@@ -111,13 +111,13 @@ WebブラウザでDNS名にアクセスすると、ロードバランサーを�
 ![画面3](./img/nginx.jpg)
 
 ### Zabbixモニタリング
-**グラフ画面**<br>
+**リソース監視**<br>
 監視データ→ホスト→グラフより<br>
-サーバ、コンテナのCPU、メモリ等のリソース値をグラフでモニタリングできます。
+サーバ、コンテナのCPU・メモリ等のリソース値をグラフでモニタリングできます。
 ![画面4](./img/zabbixグラフ.jpg)
 
-**ログ画面**<br>
+**ログ監視**<br>
 監視データ→最新データ→Fluentd収集ログ→ヒストリより<br>
-Fluentdサーバに各Nginxコンテナから集約されたログをモニタリングできます。ロードバランサーからのヘルスチェックによるアクセスや、自身がブラウザからアクセスしたログを確認できます。
+各NginxコンテナからFluentdサーバへ集約されたログをモニタリングできます。ロードバランサーからのヘルスチェックによるアクセスや、自身がブラウザからアクセスしたログを確認できます。
 ![画面5](./img/zabbixログモニタ.jpg)
 
