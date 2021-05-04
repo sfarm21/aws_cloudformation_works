@@ -31,7 +31,7 @@ DBName: "zabbix"
 DBUser: "zabbix"
 DBPassword: "yourzabbixpassword"
 
-# Zabbix Webポータル ログイン情報
+# Zabbix 管理画面 ログイン情報
 zabbix_login_user: "Admin"
 zabbix_login_password: "zabbix"
 zabbix_server_url: "http://localhost/zabbix/"

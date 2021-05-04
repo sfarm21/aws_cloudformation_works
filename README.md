@@ -93,14 +93,14 @@ d-----    2021/04/25(日)     20:54                template
 作業領域用S3バケット名は修正する必要があります。
 ![画面2](./img/パラメータ画面.jpg)
 <br>
-３．スタック作成が正常に完了すると、「`http://ZabbixサーバのパブリックIP/zabbix`」よりZabbix Webポータルの初回設定画面にアクセスできるようになります。
+３．スタック作成が正常に完了すると、「`http://ZabbixサーバのパブリックIP/zabbix`」よりZabbix 管理画面の初回設定画面にアクセスできるようになります。
 初回設定を進めていき、ログイン画面が表示されるまで進めます。<br>
 ４．Zabbixサーバにターミナルからec2-userでSSH接続し、「~/ansible_playbook」ディレクトリ内に存在する「Zabbixホスト登録、テンプレートインポート用Playbook」を実行します。
 ```
 # Zabbixホスト登録、テンプレートインポート用Playbookを実行
-ansible-playbook -i hosts add_zabbix_host.yml
+$ ansible-playbook -i hosts add_zabbix_host.yml
 ```
-Playbookが正常に終了したのを確認後、Zabbix Webポータルからログインします。左ペインから設定→ホストと確認すると、監視対象ホストが登録されていることが確認できます。
+Playbookが正常に終了したのを確認後、Zabbix 管理画面からログインします。左ペインから設定→ホストと確認すると、監視対象ホストが登録されていることが確認できます。
 
 <br>
 
