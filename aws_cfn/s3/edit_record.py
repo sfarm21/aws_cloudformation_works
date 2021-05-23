@@ -7,7 +7,7 @@ def listRecordName(recordset_list):
             result.append(recordset["Name"])
     return result
 
-def EditRecord(route53Client, hosted_zone_id, record_name, ip_address, edit_mode):
+def editRecord(route53Client, hosted_zone_id, record_name, ip_address, edit_mode):
     result = {}
     if edit_mode == "UPSERT" or edit_mode == "DELETE":
         change_batch = {
@@ -65,7 +65,7 @@ def lambda_handler(event, context):
         exit()
 
     response = {}
-    # append
+    # Append process
     if edit_mode == "UPSERT":
         recordset_list = route53Client.list_resource_record_sets(
             HostedZoneId = hostedzone_id
@@ -89,7 +89,7 @@ def lambda_handler(event, context):
             )
         )
 
-        response = EditRecord(
+        response = editRecord(
             route53Client,
             hostedzone_id,
             append_record_name,
@@ -106,7 +106,7 @@ def lambda_handler(event, context):
                 }
             ]
         )
-    # delete
+    # Delete process
     elif edit_mode == "DELETE":
         delete_record_name = ""
         for tag in ec2Instance.tags:
@@ -128,7 +128,7 @@ def lambda_handler(event, context):
             )
         )
 
-        response = EditRecord(
+        response = editRecord(
             route53Client,
             hostedzone_id,
             delete_record_name,
@@ -136,6 +136,7 @@ def lambda_handler(event, context):
             edit_mode
         )
         print(response)
+    # Invalid argument
     else:
         print("Mode name error!: {}".format(edit_mode))
         print("Correct: UPSERT or DELETE")
